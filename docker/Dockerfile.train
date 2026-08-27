@@ -1,0 +1,31 @@
+# Stage 1: Builder
+FROM python:3.11-slim AS builder
+WORKDIR /app
+
+# Create a virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements/train.txt .
+RUN pip install --no-cache-dir -r train.txt --extra-index-url https://download.pytorch.org/whl/cpu
+
+# Stage 2: Training runtime
+FROM python:3.11-slim AS training
+WORKDIR /app
+
+# Copy the virtual environment from the builder stage
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Prevent Python from writing .pyc files and buffer stdout
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Create and switch to a non-root user for security
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
+
+COPY src/ ./src/
+COPY configs/ ./configs/
+
+ENTRYPOINT ["python", "src/train.py"]

@@ -2,12 +2,14 @@ import io
 import os
 import yaml
 import torch
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.responses import JSONResponse
 from PIL import Image
 from torchvision import transforms
 from model import get_model
+import uvicorn
 
-app = Flask(__name__)
+app = FastAPI(title="CIFAR-10 ML Model API")
 
 # Try to load config if it exists, otherwise use defaults
 config_path = os.getenv("CONFIG_PATH", "configs/training_config.yaml")
@@ -37,8 +39,7 @@ try:
         print(f"Successfully loaded model checkpoint from {checkpoint_path}")
     else:
         model_loaded = False
-        print(
-            f"Warning: Checkpoint not found at {checkpoint_path}. Model is not loaded properly.")
+        print(f"Warning: Checkpoint not found at {checkpoint_path}. Model is not loaded properly.")
 except Exception as e:
     model_loaded = False
     print(f"Error initializing model: {e}")
@@ -54,28 +55,25 @@ transform = transforms.Compose([
 ])
 
 
-@app.route("/health", methods=["GET"])
-def health():
+@app.get("/health")
+async def health():
     if model_loaded:
-        return jsonify({"status": "healthy"}), 200
+        return JSONResponse(status_code=200, content={"status": "healthy"})
     else:
-        return jsonify({"status": "unhealthy", "reason": "Model not loaded"}), 503
+        return JSONResponse(status_code=503, content={"status": "unhealthy", "reason": "Model not loaded"})
 
 
-@app.route("/predict", methods=["POST"])
-def predict():
+@app.post("/predict")
+async def predict(image: UploadFile = File(...)):
     if not model_loaded:
-        return jsonify({"error": "Model not loaded"}), 503
+        return JSONResponse(status_code=503, content={"error": "Model not loaded"})
 
-    if "image" not in request.files:
-        return jsonify({"error": "No image provided"}), 400
-
-    file = request.files["image"]
     try:
         # Read image
-        image = Image.open(io.BytesIO(file.read())).convert("RGB")
+        contents = await image.read()
+        pil_image = Image.open(io.BytesIO(contents)).convert("RGB")
         # Apply transforms and add batch dimension
-        tensor = transform(image).unsqueeze(0).to(device)
+        tensor = transform(pil_image).unsqueeze(0).to(device)
 
         # Inference
         with torch.no_grad():
@@ -84,10 +82,10 @@ def predict():
 
         # Convert to list
         probs_list = probabilities.squeeze().tolist()
-        return jsonify({"probabilities": probs_list}), 200
+        return JSONResponse(status_code=200, content={"probabilities": probs_list})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8080)
