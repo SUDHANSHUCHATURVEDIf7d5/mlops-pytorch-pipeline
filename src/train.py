@@ -107,7 +107,8 @@ def main():
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             patience_counter = 0
-            save_path = checkpoint_dir / config["output"]["model_name"]
+            save_path = checkpoint_dir /
+            config["output"]["model_name"]
             torch.save({
                 "epoch": epoch + 1,
                 "model_state_dict": model.state_dict(),
