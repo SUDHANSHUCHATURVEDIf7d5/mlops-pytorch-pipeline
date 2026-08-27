@@ -2,12 +2,14 @@ import io
 import os
 import yaml
 import torch
-from flask import Flask, request, jsonify
+import uvicorn
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import JSONResponse
 from PIL import Image
 from torchvision import transforms
 from model import get_model
 
-app = Flask(__name__)
+app = FastAPI()
 
 # Try to load config if it exists, otherwise use defaults
 config_path = os.getenv("CONFIG_PATH", "configs/training_config.yaml")
@@ -54,28 +56,25 @@ transform = transforms.Compose([
 ])
 
 
-@app.route("/health", methods=["GET"])
+@app.get("/health")
 def health():
     if model_loaded:
-        return jsonify({"status": "healthy"}), 200
+        return JSONResponse(content={"status": "healthy"}, status_code=200)
     else:
-        return jsonify({"status": "unhealthy", "reason": "Model not loaded"}), 503
+        return JSONResponse(content={"status": "unhealthy", "reason": "Model not loaded"}, status_code=503)
 
 
-@app.route("/predict", methods=["POST"])
-def predict():
+@app.post("/predict")
+async def predict(image: UploadFile = File(...)):
     if not model_loaded:
-        return jsonify({"error": "Model not loaded"}), 503
+        return JSONResponse(content={"error": "Model not loaded"}, status_code=503)
 
-    if "image" not in request.files:
-        return jsonify({"error": "No image provided"}), 400
-
-    file = request.files["image"]
     try:
         # Read image
-        image = Image.open(io.BytesIO(file.read())).convert("RGB")
+        image_data = await image.read()
+        pil_image = Image.open(io.BytesIO(image_data)).convert("RGB")
         # Apply transforms and add batch dimension
-        tensor = transform(image).unsqueeze(0).to(device)
+        tensor = transform(pil_image).unsqueeze(0).to(device)
 
         # Inference
         with torch.no_grad():
@@ -84,10 +83,10 @@ def predict():
 
         # Convert to list
         probs_list = probabilities.squeeze().tolist()
-        return jsonify({"probabilities": probs_list}), 200
+        return JSONResponse(content={"probabilities": probs_list}, status_code=200)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8080)
