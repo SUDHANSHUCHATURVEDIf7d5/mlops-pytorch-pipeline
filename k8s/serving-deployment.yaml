@@ -46,11 +46,16 @@ spec:
             periodSeconds: 5
             initialDelaySeconds: 15
           volumeMounts:
+            - name: config-volume
+              mountPath: /app/configs
             - name: checkpoint-storage
               mountPath: /app/checkpoints
               subPath: checkpoints
               readOnly: true
       volumes:
+        - name: config-volume
+          configMap:
+            name: training-config
         - name: checkpoint-storage
           persistentVolumeClaim:
             claimName: training-pvc

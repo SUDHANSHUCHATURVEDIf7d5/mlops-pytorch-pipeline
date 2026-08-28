@@ -36,10 +36,7 @@ spec:
           volumeMounts:
             - name: config-volume
               mountPath: /app/configs
-            - name: storage-volume
-              mountPath: /app/data
-              subPath: data
-            - name: storage-volume
+            - name: checkpoint-storage
               mountPath: /app/checkpoints
               subPath: checkpoints
       restartPolicy: Never
@@ -47,7 +44,7 @@ spec:
         - name: config-volume
           configMap:
             name: training-config
-        - name: storage-volume
+        - name: checkpoint-storage
           persistentVolumeClaim:
             claimName: training-pvc
       # BONUS: Node selector or toleration for GPU nodes
