@@ -6,7 +6,7 @@ This repository contains a full deployment lifecycle for a PyTorch image classif
 
 ```mermaid
 graph TD
-    subgraph Kubernetes Cluster (ml-training namespace)
+    subgraph cluster ["Kubernetes Cluster (ml-training namespace)"]
         cfg[ConfigMap: training-config]
         pvc[(PersistentVolumeClaim: training-pvc)]
         
