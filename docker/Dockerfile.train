@@ -27,5 +27,6 @@ USER appuser
 
 COPY src/ ./src/
 COPY configs/ ./configs/
+COPY data/ ./data/
 
 ENTRYPOINT ["python", "src/train.py"]
