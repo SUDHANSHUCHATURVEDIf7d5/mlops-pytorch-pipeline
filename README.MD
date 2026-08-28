@@ -18,8 +18,8 @@ graph TD
         cfg -->|Mounts configs| job
         cfg -->|Mounts configs| deploy
         
-        job -->|Trains & writes model| pvc
-        pvc -->|Reads model (ReadOnly)| deploy
+        job -->|Trains and writes model| pvc
+        pvc -->|Reads model - ReadOnly| deploy
         
         deploy --- svc
         hpa -.->|Autoscales CPU| deploy
